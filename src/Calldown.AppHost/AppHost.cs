@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using Calldown.AppHost;
 using Calldown.AppHost.Firefall;
 
@@ -21,6 +22,16 @@ var firefallPath = (
     "Root of the Firefall client install, the folder that contains system\\ and firefall.ini"
 );
 var firefall = firefallPath.Resource;
+
+// Address the clients reach the stack at. localhost keeps everything on this PC, a LAN address
+// makes rin-webapi listen on all interfaces and hands that address out in place of localhost
+var publicHost = builder.Configuration["Parameters:public-host"] ?? "localhost";
+var isRemote = !string.Equals(publicHost, "localhost", StringComparison.OrdinalIgnoreCase);
+builder
+    .AddParameter("public-host", publicHost)
+    .WithDescription(
+        "Address the clients reach the stack at. Set it in user secrets and restart the AppHost to change it."
+    );
 
 var zoneId = builder
     .AddParameter("zone-id", "448")
@@ -86,12 +97,39 @@ var rinWebApi = builder
     .WithEnvironment("DBConnConfig__DBConnStr", webApiDb)
     .WithEnvironment("DBConnConfig__SDBConnStr", sdbDb)
     .WithEnvironment("DevServer__EnableLocalDev", "true")
-    .WithEnvironment("DevServer__DevGameServerURL", "localhost:" + MatrixPort)
+    .WithEnvironment("DevServer__DevGameServerURL", publicHost + ":" + MatrixPort)
     .WithEnvironment("WebApiConfig__StreamingAssetsPath", streamingAssets)
     .WithHttpHealthCheck("/health", endpointName: "https")
     .WaitForCompletion(dbSetup);
 
-rinWebApi.WithEnvironment("WebApiConfig__BaseURL", rinWebApi.GetEndpoint("https"));
+if (isRemote)
+{
+    // The http port collides with other services on a shared host and nothing needs it, so it gets a free one
+    rinWebApi
+        .WithEndpoint("https", e => e.TargetHost = "0.0.0.0")
+        .WithEndpoint("http", e => e.Port = null)
+        .WithEnvironment("WebApiConfig__BaseURL", "https://" + publicHost + ":5001");
+
+    // The client talks to RIN through WinHTTP, which rejects the dev certificate (CN=localhost, untrusted) on
+    // another PC. A certificate issued for public-host and trusted on each client replaces it. Aspire writes
+    // Kestrel's certificate settings itself, so it has to come in through Aspire rather than environment variables.
+    var tlsCertPath = builder.Configuration["Parameters:tls-cert-path"];
+    if (!string.IsNullOrEmpty(tlsCertPath))
+    {
+        var tlsCert = X509CertificateLoader.LoadPkcs12FromFile(
+            tlsCertPath,
+            builder.Configuration["Parameters:tls-cert-password"],
+            X509KeyStorageFlags.Exportable
+        );
+#pragma warning disable ASPIRECERTIFICATES001 // Experimental in Aspire 13.5
+        rinWebApi.WithHttpsCertificate(tlsCert);
+#pragma warning restore ASPIRECERTIFICATES001
+    }
+}
+else
+{
+    rinWebApi.WithEnvironment("WebApiConfig__BaseURL", rinWebApi.GetEndpoint("https"));
+}
 
 var gameServer = builder
     .AddProject<Projects.GameServer>("pin-gameserver")
