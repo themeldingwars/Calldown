@@ -1,3 +1,4 @@
+using System.Text;
 using Npgsql;
 
 namespace Calldown.DbSetup;
@@ -27,21 +28,67 @@ internal static class Database
             return (bool)(await command.ExecuteScalarAsync())!;
         }
 
+        /// <summary>
+        ///     Runs a pg_dump file the way psql would. Npgsql only speaks SQL, so the psql parts of a dump are
+        ///     handled here: <c>\restrict</c> / <c>\unrestrict</c> are dropped and <c>COPY ... FROM stdin</c>
+        ///     blocks are streamed through a text import.
+        /// </summary>
         public async Task ExecuteFileInTransactionAsync(string path)
         {
-            var sql = await File.ReadAllTextAsync(path);
+            var lines = await File.ReadAllLinesAsync(path);
 
             // pg_dump output changes session settings like search_path, so every file gets a fresh connection
             await using var connection = await dataSource.OpenConnectionAsync();
             await using var transaction = await connection.BeginTransactionAsync();
-            await using (var command = new NpgsqlCommand(sql, connection, transaction))
+
+            var sql = new StringBuilder();
+            for (var i = 0; i < lines.Length; i++)
             {
-                command.CommandTimeout = 0;
-                await command.ExecuteNonQueryAsync();
+                var line = lines[i];
+
+                if (line.StartsWith(@"\restrict ") || line.StartsWith(@"\unrestrict "))
+                {
+                    continue;
+                }
+
+                if (line.StartsWith("COPY ") && line.EndsWith(" FROM stdin;"))
+                {
+                    await ExecuteAsync(connection, transaction, sql.ToString());
+                    sql.Clear();
+
+                    // The rows are already in COPY's text format, they go to the server unchanged up to the \. line
+                    await using var writer = await connection.BeginTextImportAsync(line[..^1]);
+                    for (i++; i < lines.Length && lines[i] != @"\."; i++)
+                    {
+                        await writer.WriteAsync(lines[i]);
+                        await writer.WriteAsync('\n');
+                    }
+
+                    continue;
+                }
+
+                sql.AppendLine(line);
             }
 
+            await ExecuteAsync(connection, transaction, sql.ToString());
             await transaction.CommitAsync();
         }
+    }
+
+    private static async Task ExecuteAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        string sql
+    )
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            return;
+        }
+
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        command.CommandTimeout = 0;
+        await command.ExecuteNonQueryAsync();
     }
 }
 

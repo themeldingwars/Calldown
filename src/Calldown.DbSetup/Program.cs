@@ -100,13 +100,15 @@ static async Task ApplySeedDataAsync(
 {
     const string step = "webapi-seed";
 
-    // Certificates and difficulties reference zone settings, so the order matters
+    // Certificates and difficulties reference zone settings, so the order matters.
+    // Without the character templates CreateNewCharacter seeds an empty inventory.
     string[] files =
     [
         "ZoneSettings.sql",
         "ZoneCertificates.sql",
         "ZoneDifficulty.sql",
         "Leaderboards.sql",
+        "NewCharacterTemplate.sql",
     ];
     var paths = files.Select(f => Path.Combine(rinSqlPath, "Data", f)).ToArray();
     var fingerprint = Fingerprint(paths);
