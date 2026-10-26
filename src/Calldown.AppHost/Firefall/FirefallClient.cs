@@ -65,11 +65,9 @@ internal static class FirefallClient
     public static IResourceBuilder<ExecutableResource> AddFirefallClient(
         this IDistributedApplicationBuilder builder,
         FirefallInstall install,
-        IResourceBuilder<ProjectResource> rinWebApi
+        string operatorHost
     )
     {
-        var operatorHost = rinWebApi.GetEndpoint("https");
-
         return builder
             .AddExecutable("firefall", install.ClientExe, install.BinDir)
             .WithEnvironment("_NO_DEBUG_HEAP", "1")
@@ -78,7 +76,7 @@ internal static class FirefallClient
             .WithCommand(
                 "configure-client",
                 "Configure client",
-                ctx => Task.FromResult(Configure(install, operatorHost.Url, ctx.Logger)),
+                ctx => Task.FromResult(Configure(install, operatorHost, ctx.Logger)),
                 new CommandOptions
                 {
                     Description =

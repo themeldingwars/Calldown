@@ -11,6 +11,7 @@ const int MatrixPort = 25000;
 const int GameServerPort = 25001;
 const int MatrixHealthPort = 25080;
 const int GameServerHealthPort = 25081;
+const int WebApiHttpsPort = 5001;
 
 // Parameters:firefall-path in user secrets wins over the detected install, and without either the dashboard asks for it
 var detectedInstall = FirefallInstall.Find();
@@ -23,10 +24,9 @@ var firefallPath = (
 );
 var firefall = firefallPath.Resource;
 
-// Address the clients reach the stack at. localhost keeps everything on this PC, a LAN address
-// makes rin-webapi listen on all interfaces and hands that address out in place of localhost
 var publicHost = builder.Configuration["Parameters:public-host"] ?? "localhost";
 var isRemote = !string.Equals(publicHost, "localhost", StringComparison.OrdinalIgnoreCase);
+var operatorHost = $"https://{publicHost}:{WebApiHttpsPort}";
 builder
     .AddParameter("public-host", publicHost)
     .WithDescription(
@@ -104,21 +104,27 @@ var rinWebApi = builder
 
 if (isRemote)
 {
-    // The http port collides with other services on a shared host and nothing needs it, so it gets a free one
+    // Nothing needs the http port, and 5000 is often taken on a shared host
     rinWebApi
         .WithEndpoint("https", e => e.TargetHost = "0.0.0.0")
         .WithEndpoint("http", e => e.Port = null)
-        .WithEnvironment("WebApiConfig__BaseURL", "https://" + publicHost + ":5001");
+        .WithEnvironment("WebApiConfig__BaseURL", operatorHost);
 
-    // The client talks to RIN through WinHTTP, which rejects the dev certificate (CN=localhost, untrusted) on
-    // another PC. A certificate issued for public-host and trusted on each client replaces it. Aspire writes
-    // Kestrel's certificate settings itself, so it has to come in through Aspire rather than environment variables.
+    // WinHTTP rejects the dev certificate on other PCs
     var tlsCertPath = builder.Configuration["Parameters:tls-cert-path"];
     if (!string.IsNullOrEmpty(tlsCertPath))
     {
+        var tlsCertPassword = builder.Configuration["Parameters:tls-cert-password"];
+        builder
+            .AddParameter("tls-cert-path", tlsCertPath)
+            .WithDescription(
+                "PFX certificate issued for public-host that rin-webapi serves in place of the development certificate. Restart the AppHost to change it."
+            );
+        builder.AddParameter("tls-cert-password", tlsCertPassword ?? "", secret: true);
+
         var tlsCert = X509CertificateLoader.LoadPkcs12FromFile(
             tlsCertPath,
-            builder.Configuration["Parameters:tls-cert-password"],
+            tlsCertPassword,
             X509KeyStorageFlags.Exportable
         );
 #pragma warning disable ASPIRECERTIFICATES001 // Experimental in Aspire 13.5
@@ -229,10 +235,10 @@ var install = installRoot is null ? null : new FirefallInstall(installRoot);
 
 if (install is { IsValid: true })
 {
-    builder.AddFirefallClient(install, rinWebApi).WaitFor(rinWebApi).WaitFor(matrix);
+    builder.AddFirefallClient(install, operatorHost).WaitFor(rinWebApi).WaitFor(matrix);
 }
 
 rinWebApi.WithCreateAccountCommand();
-builder.AddFirefallPreflight(install, "https://localhost:5001");
+builder.AddFirefallPreflight(install, operatorHost);
 
 builder.Build().Run();
