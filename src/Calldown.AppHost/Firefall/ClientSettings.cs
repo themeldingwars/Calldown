@@ -90,6 +90,21 @@ internal static class ClientSettings
         );
     }
 
+    /// <summary>
+    /// Writes the [Debug] section the client reads at startup. "off" puts every log back on info, the client's default.
+    /// </summary>
+    public static List<string> SetDebugLogging(IReadOnlyList<string> firefallIni, string level)
+    {
+        var on = level != "off";
+        var lines = IniFile.SetValue(firefallIni, "Debug", "LogLevel-*", on ? level : "info");
+        foreach (var flag in new[] { "MatrixMessages", "GssMessages" })
+        {
+            lines = IniFile.SetValue(lines, "Debug", flag, on ? "true" : "false");
+        }
+
+        return lines;
+    }
+
     public static int? ToKeyCode(string? key)
     {
         key = key?.Trim() ?? string.Empty;

@@ -60,6 +60,23 @@ internal static class FirefallClient
                 new("keep", "Leave as it is"),
             ],
         },
+        new()
+        {
+            Name = "debug-logging",
+            Label = "Debug logging",
+            Description =
+                "Log level of console.log in %LocalAppData%\\Red 5 Studios\\Firefall, plus the Matrix and GSS message logging. Trace gets big quickly.",
+            InputType = InputType.Choice,
+            Required = true,
+            Value = "keep",
+            Options =
+            [
+                new("keep", "Leave as it is"),
+                new("off", "Off, the default info level"),
+                new("debug", "Debug"),
+                new("trace", "Trace"),
+            ],
+        },
     ];
 
     public static IResourceBuilder<ExecutableResource> AddFirefallClient(
@@ -92,7 +109,7 @@ internal static class FirefallClient
                 new CommandOptions
                 {
                     Description =
-                        "Sets the screen mode and the key that leaves a vehicle in the client's own settings.con and keybinds.json",
+                        "Sets the screen mode and the key that leaves a vehicle in the client's own settings.con and keybinds.json, and the debug logging in firefall.ini",
                     IconName = "Window",
                     Arguments = OptionArguments,
                     UpdateState = OnlyWhileStopped,
@@ -275,10 +292,32 @@ internal static class FirefallClient
             );
         }
 
+        var logLevel = (ctx.Arguments.GetString("debug-logging") ?? "keep").Trim().ToLowerInvariant();
+        if (logLevel is not ("keep" or "off" or "debug" or "trace"))
+        {
+            return CommandResults.Failure($"'{logLevel}' isn't a debug logging choice, use off, debug or trace");
+        }
+
         var done = new List<string>();
 
         try
         {
+            if (logLevel != "keep")
+            {
+                Backup(install.FirefallIni, ctx.Logger);
+                File.WriteAllLines(
+                    install.FirefallIni,
+                    ClientSettings.SetDebugLogging(File.ReadAllLines(install.FirefallIni), logLevel)
+                );
+
+                done.Add(logLevel == "off" ? "debug logging off" : $"logging at {logLevel}");
+                ctx.Logger.LogInformation(
+                    "Set the debug logging to {LogLevel} in {FirefallIni}",
+                    logLevel,
+                    install.FirefallIni
+                );
+            }
+
             if (screenMode != ScreenMode.Keep)
             {
                 Backup(install.SettingsCon, ctx.Logger);
@@ -316,7 +355,7 @@ internal static class FirefallClient
         }
         catch (UnauthorizedAccessException)
         {
-            return CommandResults.Failure($"No write access to {install.WritePath}");
+            return CommandResults.Failure($"No write access to {install.WritePath} or {install.Root}");
         }
         catch (Exception e) when (e is IOException or JsonException)
         {
