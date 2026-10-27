@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <AspireUseCliBundle>true</AspireUseCliBundle>
     <UserSecretsId>40f4a3a2-7b24-44a8-a32b-a88f1bf235e1</UserSecretsId>
+    <HasDropPod Condition="Exists('$(DropPodRoot)src\DropPod\DropPod.csproj')">true</HasDropPod>
+    <DefineConstants Condition="'$(HasDropPod)' == 'true'">$(DefineConstants);HAS_DROPPOD</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +21,7 @@
     <ProjectReference Include="$(PinRoot)UdpHosts\GameServer\GameServer.csproj" />
     <ProjectReference Include="$(PinRoot)UdpHosts\MatrixServer\MatrixServer.csproj" />
     <ProjectReference Include="$(PinRoot)Tools\CollisionGenerator\CollisionGenerator.csproj" />
+    <ProjectReference Include="$(DropPodRoot)src\DropPod\DropPod.csproj" Condition="'$(HasDropPod)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +32,10 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>PinRoot</_Parameter1>
       <_Parameter2>$(PinRoot)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DropPodRoot</_Parameter1>
+      <_Parameter2>$(DropPodRoot)</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 

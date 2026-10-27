@@ -35,9 +35,12 @@ TMW/
   PIN/
   RIN.WebAPI/
   SDBrowser/
+  DropPod/      optional
 ```
 
-If yours live elsewhere, set the MSBuild properties `PinRoot`, `RinRoot` and `SDBrowserRoot`, e.g. with `dotnet build -p:PinRoot=D:\code\PIN\`.
+If yours live elsewhere, set the MSBuild properties `PinRoot`, `RinRoot`, `SDBrowserRoot` and `DropPodRoot`, e.g. with `dotnet build -p:PinRoot=D:\code\PIN\`.
+
+[DropPod](https://github.com/themeldingwars/DropPod), the load tester, is optional. With a checkout next to Calldown, the dashboard gets a `droppod` resource, without it Calldown builds and runs the same as before.
 
 ## Running It
 
@@ -80,6 +83,9 @@ Set them in the AppHost's user secrets, e.g. `aspire secret set Parameters:zone-
 | `db-setup`        | Re-import SDB           | Imports `clientdb.sd2` again                                                                                                                                                                                                        |
 | `db-setup`        | Reset database          | Drops everything, accounts and characters included, and sets it up from scratch                                                                                                                                                     |
 | `collision-cache` | Rebuild collision cache | Regenerates the cache even if it looks current                                                                                                                                                                                      |
+| `droppod`         | Seed pods               | Creates the pod accounts and their characters in RIN, once per database                                                                                                                                                             |
+| `droppod`         | Drop pods               | Drops pods with a behavior (idle, wander, chat, churn, hop), optionally in another zone, holds, then logs them out again. A plain start drops a single pod                                                                                |
+| `droppod`         | Start invasion          | Drops the groups of an invasion file from DropPod's `invasions` folder                                                                                                                                                              |
 
 All of them also work from the terminal, e.g. `aspire resource rin-webapi create-account --email me@example.com --password hunter22 --country US`.
 

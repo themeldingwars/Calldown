@@ -9,11 +9,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <!-- Calldown expects PIN, RIN.WebAPI and SDBrowser to be checked out next to it -->
+    <!-- Calldown expects PIN, RIN.WebAPI and SDBrowser to be checked out next to it, DropPod is optional -->
     <TmwRoot Condition="'$(TmwRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))\</TmwRoot>
     <PinRoot Condition="'$(PinRoot)' == ''">$(TmwRoot)PIN\</PinRoot>
     <RinRoot Condition="'$(RinRoot)' == ''">$(TmwRoot)RIN.WebAPI\</RinRoot>
     <SDBrowserRoot Condition="'$(SDBrowserRoot)' == ''">$(TmwRoot)SDBrowser\</SDBrowserRoot>
+    <DropPodRoot Condition="'$(DropPodRoot)' == ''">$(TmwRoot)DropPod\</DropPodRoot>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" Version="3.10.94">

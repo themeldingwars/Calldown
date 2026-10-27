@@ -238,6 +238,15 @@ if (install is { IsValid: true })
     builder.AddFirefallClient(install, operatorHost).WaitFor(rinWebApi).WaitFor(matrix);
 }
 
+#if HAS_DROPPOD
+// Only there with a DropPod checkout next to Calldown, see Directory.Build.props
+builder
+    .AddProject<Projects.DropPod>("droppod")
+    .WithDropPodCommands(paths.DropPodRoot, operatorHost)
+    .WaitFor(rinWebApi)
+    .WaitFor(matrix);
+#endif
+
 rinWebApi.WithCreateAccountCommand();
 builder.AddFirefallPreflight(install, operatorHost);
 
