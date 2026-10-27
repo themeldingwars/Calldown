@@ -8,7 +8,7 @@ internal static class RunOnceCommands
         this IResourceBuilder<ProjectResource> dbSetup
     )
     {
-        var nextRun = dbSetup.WithNextRunFlag(flag => flag);
+        var nextRun = dbSetup.WithNextRunArgs();
 
         dbSetup.WithCommand(
             "reimport-sdb",
@@ -44,7 +44,7 @@ internal static class RunOnceCommands
         this IResourceBuilder<ProjectResource> collisionCache
     )
     {
-        var nextRun = collisionCache.WithNextRunFlag(flag => flag);
+        var nextRun = collisionCache.WithNextRunArgs();
 
         collisionCache.WithCommand(
             "rebuild-collision",
@@ -62,17 +62,15 @@ internal static class RunOnceCommands
         return collisionCache;
     }
 
-    private static NextRun WithNextRunFlag(
+    public static NextRun WithNextRunArgs(
         this IResourceBuilder<ProjectResource> resource,
-        Func<string?, string?> toArg
+        params string[] defaults
     )
     {
         var nextRun = new NextRun(resource.Resource);
-
-        // The flag only applies to the next run, a plain restart from the dashboard runs the resource normally
         resource.WithArgs(ctx =>
         {
-            if (toArg(nextRun.Take()) is { } arg)
+            foreach (var arg in nextRun.Take() ?? defaults)
             {
                 ctx.Args.Add(arg);
             }
@@ -81,7 +79,7 @@ internal static class RunOnceCommands
         return nextRun;
     }
 
-    private static ResourceCommandState OnlyWhenStopped(UpdateCommandStateContext ctx)
+    public static ResourceCommandState OnlyWhenStopped(UpdateCommandStateContext ctx)
     {
         var state = ctx.ResourceSnapshot.State?.Text;
         return
@@ -92,15 +90,15 @@ internal static class RunOnceCommands
             : ResourceCommandState.Disabled;
     }
 
-    private sealed class NextRun(IResource resource)
+    public sealed class NextRun(IResource resource)
     {
-        private string? _flag;
+        private string[]? _args;
 
-        public string? Take() => Interlocked.Exchange(ref _flag, null);
+        public string[]? Take() => Interlocked.Exchange(ref _args, null);
 
-        public Task<ExecuteCommandResult> StartWith(ExecuteCommandContext ctx, string flag)
+        public Task<ExecuteCommandResult> StartWith(ExecuteCommandContext ctx, params string[] args)
         {
-            _flag = flag;
+            _args = args;
             var commands = ctx.Services.GetRequiredService<ResourceCommandService>();
             return commands.ExecuteCommandAsync(
                 resource,
