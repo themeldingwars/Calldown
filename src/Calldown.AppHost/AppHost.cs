@@ -173,6 +173,8 @@ var gameServer = builder
     .WithEnvironment("GameServer__PreloadZones", preloadZones)
     .WithEnvironment("GameServer__LoadMapsCollision", collision.Enabled ? "true" : "false")
     .WithEnvironment("GameServer__LogOutputs", "Console")
+    .WithEnvironment("GameServer__ContentPath", Path.Combine(paths.PinRoot, "UdpHosts", "GameServer", "Content"))
+    .WithEnvironment("GameServer__WatchContent", "true")
     .WaitFor(rinInternal);
 
 if (collision.Enabled)

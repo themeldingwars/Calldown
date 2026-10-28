@@ -56,6 +56,8 @@ The first start takes a bit longer:
 
 Every later start skips both, as long as the client files haven't changed.
 
+The GameServer reads its content (deployables, outposts and so on) straight from PIN's `UdpHosts/GameServer/Content` and reloads a zone when one of its files changes, so edits show up without a restart. Only deployables change right away, the other kinds still need a restart of `pin-gameserver`.
+
 ## Parameters
 
 Set them in the AppHost's user secrets, e.g. `aspire secret set Parameters:zone-id 1030` or `dotnet user-secrets set Parameters:zone-id 1030 --project src/Calldown.AppHost`.
