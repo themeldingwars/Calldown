@@ -12,7 +12,7 @@ Calldown is an [Aspire](https://aspire.dev) AppHost that runs the whole stack wi
 - `postgres` with pgweb, running in Docker with a persistent volume
 - `db-setup`, which applies RIN's `webapi_schema.sql` and seed data, then imports the client's `clientdb.sd2` into the `sdb` schema
 - `rin-internal` and `rin-webapi`
-- `collision-cache`, which pre-generates the collision data with PIN's `CollisionGenerator`
+- `collision-cache`, which pre-generates the collision data and the navmesh with PIN's `CollisionGenerator`
 - `pin-gameserver` and `pin-matrix`
 - `firefall`, the game client itself, which only starts when you tell it to
 
@@ -52,7 +52,7 @@ aspire run
 
 The first start takes a bit longer:
 - The SDB import takes about 20s
-- The collision cache for zone 448 about a minute and 5.6 GB in `%LocalAppData%\Calldown\collision`
+- The collision cache for zone 448 about 8 minutes and 6 GB in `%LocalAppData%\Calldown\collision`, the navmesh takes most of the time
 
 Every later start skips both, as long as the client files haven't changed.
 

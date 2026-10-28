@@ -196,6 +196,7 @@ if (collision.Enabled)
             ctx.Args.Add(ReferenceExpression.Create($"{firefall}\\system\\maps"));
             ctx.Args.Add("--zone-id");
             ctx.Args.Add(zoneId.Resource);
+            ctx.Args.Add("--navmesh");
 
             if (collision.IncludeAssets)
             {
